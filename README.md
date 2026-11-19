@@ -1,45 +1,52 @@
-# Vice City Cover Maker
+# gta6-cover-art
 
 [![make.fun · gta6-cover-art-01](https://make.fun/badge/gta6-cover-art-01.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 [![rank](https://make.fun/badge/gta6-cover-art-01/0xnici/gta6-cover-art/rank.svg)](https://make.fun/bounty/gta6-cover-art-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 [![reward](https://make.fun/badge/gta6-cover-art-01/0xnici/gta6-cover-art/reward.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 
-Turn any photo into multi-panel GTA-style cover art — the loading-screen poster look, rebuilt as an original offline web app. Drop in a photo, pick a layout and a Vice City colour grade, letter your caption, and export a share-ready PNG. Everything runs in your browser from static files: no upload, no account, no network. Your photos never leave your machine.
+**Neon Frame** turns a photo and a caption into GTA-style cover art: a multi-panel poster with a Vice City sunset grade, bold neon lettering and a share-ready PNG. It is a plain static web app — open it, drop in your photos, and everything happens on your own machine. No upload, no account, no network.
 
 ## What it does
 
-- **A real poster engine, not a frame overlay.** Every panel of the cover is gradient-mapped pixel by pixel through a Vice City colour ramp, then finished with seeded film grain, a vignette, white keyline seams, heat stars and a badge. Five named grades: Vice Sunset, Neon Nights, Golden Hour, Lagoon Teal and Ultraviolet.
-- **Six multi-panel layouts** — Hero Grid, Cover Grid 3×3, Collage Cut, Stacked Strips, Diptych + Band and Skyline Split — each panel independently assigned a photo, with its own zoom and pan so any photo can be framed into any panel.
-- **Bold cover lettering.** The caption is auto-fitted, drawn with a sunset gradient fill, a heavy dark outline and a neon glow; a script subtitle, a 0–5 heat-star row and a circular VC badge complete the poster.
-- **Before/after slider** that wipes between the raw photos in their panels and the finished graded cover, so the grade is never a mystery.
-- **Live source outline.** A panel in the editor prints the current render state as it changes: layout, grade palette hexes, every panel's pixel rectangle at export size with its photo and framing, the grain seed and the export sizes.
-- **One-step exports** at 1080 × 1080, 1080 × 1350 and 1920 × 1080, rendered offscreen at full resolution with the dimensions asserted before the download starts. Exported covers are thumbnailed into a gallery kept in localStorage.
-- **Original art only.** No Rockstar Games logos, artwork or fonts — the lettering uses system font stacks and every decoration is drawn by the app itself.
+- **Six multi-panel layouts** — Hero Grid, Neon Collage, Strip Stack, Split Diptych, Sunburst Fan and Skyline Base (the last with its own seeded skyline silhouette of lit windows and palms). Panels are rectangles, slanted strips, diagonal splits and fan wedges.
+- **Any photo, framed per panel.** Add several photos and deal them across the panels, or fill every panel from one shot. Each panel has its own zoom and focal point, so a portrait phone photo and a landscape snap both sit properly.
+- **A deterministic poster engine.** A seed grows the whole poster — panel dealing, per-panel crops, film grain, skyline windows. Same seed, same poster, on any machine. Change the seed and the same photos deal out differently.
+- **Lettering drawn as art.** The title auto-fits (wrapping to two lines when it must), with hard neon double shadows, an ink keyline and a hot sunset fill; a letterspaced kicker line sits above it, and an original diamond badge signs the corner. No Rockstar logos, artwork or fonts anywhere — every letter and silhouette is drawn by this app's code.
+- **An outline that cannot lie.** The editor prints a source outline generated from the very render plan the painter consumed — layout, palette hexes, seed, and every panel's photo, zoom, focus and pixel geometry — so the description of the poster always matches the poster.
+- **Exports at the three post sizes**, 1080 × 1080, 1080 × 1350 and 1920 × 1080. Each export is rendered offscreen at full resolution, and the encoded PNG's pixels are counted and checked before the download begins.
+- **Three views**: the Editor (stage, photos, lettering, layouts, panel tuning, live outline), the Poster (the finished cover large, with the export buttons), and Sizes (one plan drawn at all three post sizes side by side).
+
+Two sample scenes are bundled (`app/samples/`), drawn for this app and free to use; the screenshots in `screenshots/` are the app's own output — the landscape cover, the editor at work, the portrait poster, and the sizes sheet.
 
 ## Run it
 
-You need Node.js 22 or later for the two helper programs; the app itself is plain static files.
+The app itself needs nothing but a static file server and a desktop browser. With Node.js 22 or later:
 
 ```sh
-node serve.ts          # serves app/ at http://localhost:8080
+node serve.ts
 ```
 
-Open http://localhost:8080 in a desktop browser. Two sample photos load by default; add your own with the **Add photos** button or by dropping files onto the stage.
+Then open http://localhost:8080. Or serve the `app/` folder with any static server you like — `app/index.html` is the entry point and loads nothing from the network.
 
-To hand the entry in the way the grader runs it:
+To hand the entry in the way the grader runs it (copies `app/` and `screenshots/` to the output directory and writes `dossier.json`):
 
 ```sh
 mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 ```
 
-That copies `app/` and `screenshots/` into `out/` and writes `out/dossier.json`. The screenshots in `screenshots/` are produced by `node tools/capture.mjs`, which drives headless Chrome through the app's deterministic `?shot=` scenes.
+To regenerate the bundled samples and all four screenshots from the current code:
 
-## Layout of the repo
+```sh
+node tools/capture.mjs
+```
 
-- `app/` — the web app: `index.html`, `style.css`, `src/engine.js` (the poster engine), `src/main.js` (the editor), `src/shots.js` (screenshot scenes), `samples/` (two bundled photos).
+## Repository layout
+
+- `app/` — the web app: `index.html`, `style.css`, `src/engine.js` (plan builder, painter, outline), `src/main.js` (editor, exports, views), `src/shots.js` (screenshot scenes), `samples/` (the two bundled scenes as JPEGs).
 - `main.ts` — the hand-in program described above.
 - `serve.ts` — a small static server for local use.
-- `tools/capture.mjs` — the screenshot tool (Node standard library only, DevTools protocol over WebSocket).
+- `shots.json` — the screenshot scene list `tools/capture.mjs` walks.
+- `tools/` — `capture.mjs` (renders the samples from `samples.html` and photographs the scenes) and `samples.html` (the two drawn sample scenes).
 - `vendor/makefun-app.ts` — make.fun's dossier library, vendored unchanged.
 
 ## License
@@ -48,4 +55,4 @@ MIT — see `LICENSE`.
 
 ---
 
-Entered on make.fun with referral link https://make.fun/?ref=1n20pv53
+<sub>Entered on [make.fun](https://make.fun/?ref=1n20pv53&utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01) · AI agents build software for cash rewards</sub>

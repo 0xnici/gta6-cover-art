@@ -1,23 +1,27 @@
-// serve.ts — a pocket static server for trying the app locally.
-// Node 22 standard library only. `node serve.ts` (or PORT=9000 node
-// serve.ts, or `node serve.ts --port 9000`) serves app/ on 127.0.0.1.
-// It will not follow a path out of app/, and it answers 404 plainly.
+// serve.ts — local development server for the cover maker.
+//
+// `node serve.ts` publishes app/ at http://localhost:8080 so the entry can
+// be opened in a desktop browser exactly as the grader's static host will
+// serve it. Node 22 standard library only; no routing, no transforms, and
+// any path that tries to climb out of app/ is refused. The port comes from
+// `--port <n>` or the PORT environment variable, defaulting to 8080.
 
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const appRoot = resolve(fileURLToPath(new URL('./app', import.meta.url)));
+const APP_DIR = resolve(fileURLToPath(new URL('./app', import.meta.url)));
 
-function pickPort(): number {
-  const flagAt = process.argv.indexOf('--port');
-  const raw = flagAt >= 0 ? process.argv[flagAt + 1] : process.env.PORT;
-  const n = raw ? Number(raw) : 8080;
-  return Number.isInteger(n) && n > 0 && n < 65536 ? n : 8080;
+function choosePort(): number {
+  const flag = process.argv.indexOf('--port');
+  const candidate = flag >= 0 ? process.argv[flag + 1] : process.env.PORT;
+  const parsed = candidate === undefined ? 8080 : Number(candidate);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535 ? parsed : 8080;
 }
 
-const CONTENT_TYPES: Record<string, string> = {
+const TYPE_BY_EXTENSION: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -28,42 +32,50 @@ const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.gif': 'image/gif',
   '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
+  '.svg': 'image/svg+xml; charset=utf-8',
   '.ico': 'image/x-icon',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
   '.wasm': 'application/wasm',
   '.txt': 'text/plain; charset=utf-8',
 };
 
-const server = createServer((req, res) => {
-  let pathname = '/';
+async function handle(request: import('node:http').IncomingMessage, response: import('node:http').ServerResponse): Promise<void> {
+  let path: string;
   try {
-    pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://127.0.0.1').pathname);
+    path = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname);
   } catch {
-    res.writeHead(400, { 'content-type': 'text/plain' }).end('bad request\n');
+    response.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' }).end('bad request\n');
     return;
   }
-  if (pathname.endsWith('/')) pathname += 'index.html';
-  const target = resolve(join(appRoot, '.' + pathname));
-  if (target !== appRoot && !target.startsWith(appRoot + sep)) {
-    res.writeHead(403, { 'content-type': 'text/plain' }).end('forbidden\n');
+  if (path.endsWith('/')) path += 'index.html';
+  const filePath = resolve(join(APP_DIR, '.' + path));
+  const inside = filePath === APP_DIR || filePath.startsWith(APP_DIR + sep);
+  if (!inside) {
+    response.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' }).end('forbidden\n');
     return;
   }
-  if (!existsSync(target) || !statSync(target).isFile()) {
-    res.writeHead(404, { 'content-type': 'text/plain' }).end('not found\n');
+  let info;
+  try {
+    info = await stat(filePath);
+    if (!info.isFile()) throw new Error('directory');
+  } catch {
+    response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found\n');
     return;
   }
-  res.writeHead(200, {
-    'content-type': CONTENT_TYPES[extname(target).toLowerCase()] ?? 'application/octet-stream',
-    'content-length': statSync(target).size,
+  response.writeHead(200, {
+    'content-type': TYPE_BY_EXTENSION[extname(filePath).toLowerCase()] ?? 'application/octet-stream',
+    'content-length': info.size,
     'cache-control': 'no-store',
   });
-  createReadStream(target).pipe(res);
-});
+  createReadStream(filePath).pipe(response);
+}
 
-const port = pickPort();
-server.listen(port, '127.0.0.1', () => {
-  console.log(`Vice City Cover Maker app/ serving at http://localhost:${port}`);
+const port = choosePort();
+createServer((request, response) => {
+  void handle(request, response);
+}).listen(port, '127.0.0.1', () => {
+  console.log(`cover maker: app/ live at http://localhost:${port}`);
 });

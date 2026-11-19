@@ -1,89 +1,73 @@
-// shots.js — deterministic screenshot scenes for tools/capture.mjs.
-// A ?shot=<name> page sets up one fixed scene from the bundled sample
-// photos, renders it, and raises window.__shotReady when the frame is
-// final, so captures are identical on every run.
+// shots.js — the fixed scenes tools/capture.mjs photographs.
+//
+// A ?shot=<name> URL rebuilds one exact poster from the bundled samples,
+// paints it, and raises window.__shotReady only once the frame is final,
+// so every capture of a scene is the same image. The four scenes are the
+// entry's screenshots: an exported cover full-frame, the editor at work,
+// the poster view, and the sizes sheet with the export dimensions proven.
 
-const SCENES = {
-  // A finished portrait poster, full frame — the money shot.
-  cover: {
-    bodyClass: 'shot-cover',
-    canvas: [1024, 1280],
-    setup: { layout: 'heroGrid', grade: 'sunset', caption: 'Neon Shore', subtitle: 'vice city nights', heat: 5, seed: 11, assignments: [0, 1, 0, 1] },
-  },
-  // The editor at work: collage layout, both samples placed, outline live.
-  editor: {
-    bodyClass: 'shot-editor',
-    canvas: [880, 880],
-    setup: { layout: 'collage', grade: 'neon', caption: 'Boulevard Queen', subtitle: 'midnight run', heat: 4, seed: 23, assignments: [0, 1, 1, 0, 1] },
-  },
-  // A finished wide poster in a second grade and layout.
-  poster: {
-    bodyClass: 'shot-poster',
-    canvas: [1280, 720],
-    setup: { layout: 'skyline', grade: 'goldenhour', caption: 'Pier Pressure', subtitle: 'one last score', heat: 5, seed: 5, assignments: [1, 0, 1, 0] },
-  },
-  // The editor with the export gallery filled at all three post sizes.
-  exports: {
-    bodyClass: 'shot-exports',
-    canvas: [880, 880],
-    setup: { layout: 'nineGrid', grade: 'lagoon', caption: 'Lagoon City', subtitle: 'salt & neon', heat: 3, seed: 41, assignments: [0, 1, 0, 1, 0, 1, 0, 1, 0] },
-    after: async (api) => {
-      // Seed the gallery the way real exports would, minus the downloads:
-      // render the three sizes and keep their thumbnails.
-      const { EXPORT_SIZES, renderCover } = await import('./engine.js');
-      const items = [];
-      for (const size of EXPORT_SIZES) {
-        const off = document.createElement('canvas');
-        off.width = size.w; off.height = size.h;
-        renderCover(off.getContext('2d'), size.w, size.h, api.state);
-        const thumb = document.createElement('canvas');
-        thumb.width = 216; thumb.height = Math.round(216 * size.h / size.w);
-        thumb.getContext('2d').drawImage(off, 0, 0, thumb.width, thumb.height);
-        items.push({ dataUrl: thumb.toDataURL('image/jpeg', 0.82), label: `${size.w}×${size.h}`, at: Date.now() });
-      }
-      try { localStorage.setItem('vc-cover-gallery-v1', JSON.stringify(items)); } catch { /* scene still renders */ }
-      const panel = document.querySelector('.panel');
-      if (panel) panel.scrollTop = panel.scrollHeight;
-    },
-  },
-};
+function setField(id, value) {
+  const el = document.getElementById(id);
+  if (el && value !== undefined) el.value = value;
+}
 
-export async function applyShotScene(state, params, api) {
-  const name = params.get('shot') || 'cover';
-  const scene = SCENES[name] ?? SCENES.cover;
-  document.body.classList.add(scene.bodyClass);
-
-  const captionOverride = params.get('caption');
-  await api.addPhotoSource('samples/boulevard.jpg', 'boulevard');
-  await api.addPhotoSource('samples/pier.jpg', 'pier');
-
-  Object.assign(state, scene.setup);
-  if (captionOverride) state.caption = captionOverride;
-  state.tunes = state.assignments.map((_, i) => ({
-    zoom: 1 + (i % 3) * 0.12,
-    ox: (i % 2 === 0 ? 1 : -1) * 0.08,
-    oy: 0,
-  }));
-
-  const preview = document.getElementById('previewCanvas');
-  const original = document.getElementById('originalCanvas');
-  preview.width = scene.canvas[0]; preview.height = scene.canvas[1];
-  original.width = scene.canvas[0]; original.height = scene.canvas[1];
-
-  const captionInput = document.getElementById('captionInput');
-  const subtitleInput = document.getElementById('subtitleInput');
-  if (captionInput) captionInput.value = state.caption;
-  if (subtitleInput) subtitleInput.value = state.subtitle;
-  const heatInput = document.getElementById('heatInput');
-  const heatLabel = document.getElementById('heatLabel');
-  if (heatInput) heatInput.value = String(state.heat);
-  if (heatLabel) heatLabel.textContent = `${state.heat} star${state.heat === 1 ? '' : 's'}`;
-
-  api.draw();
-  if (scene.after) await scene.after({ ...api, state });
-  api.draw();
-  // Two frames so fonts, patterns and the gallery are all painted.
+async function settle() {
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+export async function runShot(params, api) {
+  const { settings } = api;
+  const shot = params.get('shot');
+
+  // Settings every scene shares, each overridable from the query string.
+  settings.title = params.get('caption') ?? settings.title;
+  settings.kicker = params.get('sub') ?? settings.kicker;
+  settings.layoutId = params.get('layout') ?? settings.layoutId;
+  settings.seed = params.get('seed') ?? settings.seed;
+  settings.sizeKey = params.get('size') ?? settings.sizeKey;
+  setField('titleInput', settings.title);
+  setField('kickerInput', settings.kicker);
+  setField('seedInput', settings.seed);
+
+  if (shot === 'cover') {
+    document.body.classList.add('shot-cover');
+    await api.loadSample(params.get('photo') ?? 'pier');
+    // The hero panel's subject is the street at the photo's foot, not the
+    // sky: deal the hero and the wide bottom panel a low focal point.
+    api.setPanelEdit(0, { focusY: 0.82, zoom: 1.04 });
+    api.setPanelEdit(4, { focusY: 0.85 });
+    api.setView('editor');
+    api.paintAll();
+  } else if (shot === 'editor') {
+    await api.loadSample(params.get('photo') ?? 'boulevard');
+    await api.loadSample('pier');
+    api.setView('editor');
+    api.selectPanel(1);
+    api.paintAll();
+  } else if (shot === 'poster') {
+    document.body.classList.add('shot-poster');
+    await api.loadSample(params.get('photo') ?? 'boulevard');
+    api.setView('poster');
+    api.paintAll();
+  } else if (shot === 'exports') {
+    document.body.classList.add('shot-exports');
+    await api.loadSample(params.get('photo') ?? 'pier');
+    if (params.get('photo2')) await api.loadSample(params.get('photo2'));
+    api.setView('sizes');
+    api.paintSizesSheet();
+    // Prove the real exports, encoded bytes and all, at their true sizes.
+    const dims = [];
+    for (const key of ['square', 'portrait', 'landscape']) {
+      const verified = await api.exportPng(key, { download: false });
+      dims.push([verified.w, verified.h]);
+    }
+    window.__exportDims = dims;
+  } else {
+    await api.loadSample('boulevard');
+    api.paintAll();
+  }
+
+  await settle();
   window.__shotReady = true;
-  window.__shotName = name;
+  window.__shotName = shot;
 }

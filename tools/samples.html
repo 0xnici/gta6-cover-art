@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Neon Frame sample scenes</title>
+<style>
+  body { margin: 0; background: #000; }
+  .scene { overflow: hidden; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     BOULEVARD — 1600 x 1200, landscape.
+     A neon boulevard at sunset: skyline, palms, a low car on a road
+     that runs to the horizon. Drawn as flat shapes on purpose; the
+     poster's grade and grain do the rest.
+     ================================================================ -->
+<div class="scene" id="boulevard" style="width:1600px;height:1200px">
+<svg width="1600" height="1200" viewBox="0 0 1600 1200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a0a52"/>
+      <stop offset="0.38" stop-color="#8e2a7d"/>
+      <stop offset="0.62" stop-color="#e8447c"/>
+      <stop offset="0.8" stop-color="#ff7a3d"/>
+      <stop offset="1" stop-color="#ffb347"/>
+    </linearGradient>
+    <radialGradient id="bSun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff3c4"/>
+      <stop offset="0.55" stop-color="#ffd94d"/>
+      <stop offset="1" stop-color="#ff9a3d"/>
+    </radialGradient>
+    <linearGradient id="bRoad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a1154"/>
+      <stop offset="1" stop-color="#170736"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <g id="palm">
+      <path d="M0,220 Q14,110 44,6" stroke="#1c0733" stroke-width="13" fill="none" stroke-linecap="round"/>
+      <g stroke="#1c0733" stroke-width="9" fill="none" stroke-linecap="round">
+        <path d="M44,6 Q90,-34 150,-30"/>
+        <path d="M44,6 Q104,4 148,44"/>
+        <path d="M44,6 Q-6,-38 -66,-28"/>
+        <path d="M44,6 Q-16,8 -58,52"/>
+        <path d="M44,6 Q52,-44 96,-64"/>
+        <path d="M44,6 Q10,-48 -34,-58"/>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="1600" height="1200" fill="url(#bSky)"/>
+  <circle cx="800" cy="742" r="330" fill="#ff9a3d" opacity="0.35" filter="url(#soft)"/>
+  <circle cx="800" cy="742" r="196" fill="url(#bSun)"/>
+  <g fill="#ff8fb5" opacity="0.5" filter="url(#soft)">
+    <ellipse cx="300" cy="240" rx="230" ry="34"/>
+    <ellipse cx="1180" cy="170" rx="280" ry="30"/>
+    <ellipse cx="620" cy="330" rx="330" ry="26"/>
+    <ellipse cx="1420" cy="330" rx="200" ry="24"/>
+  </g>
+
+  <!-- skyline -->
+  <g fill="#2a0a45">
+    <rect x="-20" y="560" width="120" height="200"/>
+    <rect x="120" y="500" width="90" height="260"/>
+    <rect x="228" y="592" width="140" height="168"/>
+    <rect x="386" y="470" width="76" height="290"/>
+    <rect x="480" y="600" width="120" height="160"/>
+    <rect x="1010" y="580" width="130" height="180"/>
+    <rect x="1158" y="492" width="84" height="268"/>
+    <rect x="1260" y="596" width="150" height="164"/>
+    <rect x="1428" y="520" width="96" height="240"/>
+    <rect x="1540" y="600" width="90" height="160"/>
+  </g>
+  <g fill="#ffd94d" opacity="0.85">
+    <rect x="140" y="530" width="12" height="16"/><rect x="168" y="566" width="12" height="16"/>
+    <rect x="404" y="500" width="11" height="15"/><rect x="404" y="540" width="11" height="15"/>
+    <rect x="1180" y="522" width="11" height="15"/><rect x="1450" y="552" width="12" height="16"/>
+    <rect x="1290" y="626" width="12" height="15"/><rect x="250" y="622" width="12" height="15"/>
+  </g>
+  <!-- neon signs -->
+  <g font-family="Arial, sans-serif" font-weight="bold" filter="url(#glow)">
+    <text x="152" y="486" font-size="34" fill="#17e6c8" transform="rotate(-90 152 486)"></text>
+    <rect x="1176" y="440" width="48" height="150" rx="8" fill="none" stroke="#ff4f9a" stroke-width="4"/>
+    <text x="1200" y="580" font-size="30" fill="#ff4f9a" text-anchor="middle" transform="rotate(-90 1200 515) translate(0 8)"></text>
+    <text x="1216" y="470" font-size="27" fill="#ff4f9a" transform="rotate(90 1216 470)"></text>
+  </g>
+  <text x="1200" y="470" font-family="Verdana, sans-serif" font-size="26" font-weight="bold" fill="#ff77ad" transform="rotate(90 1200 470)" filter="url(#glow)">HOTEL</text>
+  <text x="430" y="462" font-family="Verdana, sans-serif" font-size="30" font-weight="bold" fill="#17e6c8" filter="url(#glow)">BAR · 24H</text>
+
+  <!-- road -->
+  <polygon points="430,1200 1170,1200 884,756 716,756" fill="url(#bRoad)"/>
+  <g stroke-width="10" filter="url(#glow)">
+    <line x1="430" y1="1200" x2="716" y2="756" stroke="#ff4f9a"/>
+    <line x1="1170" y1="1200" x2="884" y2="756" stroke="#17e6c8"/>
+  </g>
+  <g fill="#ffe9a8">
+    <polygon points="792,1180 808,1180 804,1060 796,1060"/>
+    <polygon points="795,990 805,990 803,900 797,900"/>
+    <polygon points="797,850 803,850 801.5,795 798.5,795"/>
+  </g>
+  <rect x="0" y="752" width="1600" height="10" fill="#1c0733" opacity="0.55"/>
+
+  <!-- palms -->
+  <use href="#palm" transform="translate(120,560) scale(1.5)"/>
+  <use href="#palm" transform="translate(1330,545) scale(-1.35,1.35)"/>
+  <use href="#palm" transform="translate(330,640) scale(0.9)"/>
+  <use href="#palm" transform="translate(1150,650) scale(-0.8,0.8)"/>
+
+  <!-- the car -->
+  <g transform="translate(480,872)">
+    <ellipse cx="330" cy="238" rx="330" ry="26" fill="#17e6c8" opacity="0.4" filter="url(#soft)"/>
+    <path d="M18,196 L54,190 C84,138 150,104 246,92 C336,80 428,86 492,110 C556,120 606,152 640,188 L646,206 C646,218 634,224 618,224 L566,224 A40,40 0 0,0 486,224 L196,224 A40,40 0 0,0 116,224 L40,224 C26,224 14,212 18,196 Z" fill="#12041f"/>
+    <path d="M120,176 C170,120 250,104 330,104 C400,104 470,120 520,168 L470,172 C420,138 380,128 320,128 C258,128 200,142 158,178 Z" fill="#3d1160"/>
+    <path d="M120,176 C170,120 250,104 330,104 L330,128 C258,128 200,142 158,178 Z" fill="#57164f"/>
+    <circle cx="156" cy="224" r="37" fill="#0a0316"/>
+    <circle cx="526" cy="224" r="37" fill="#0a0316"/>
+    <circle cx="156" cy="224" r="19" fill="none" stroke="#8e2a7d" stroke-width="6"/>
+    <circle cx="526" cy="224" r="19" fill="none" stroke="#8e2a7d" stroke-width="6"/>
+    <rect x="586" y="180" width="52" height="11" rx="5" fill="#ff3355" filter="url(#glow)"/>
+    <rect x="26" y="182" width="40" height="10" rx="5" fill="#ffe9a8" filter="url(#glow)"/>
+    <path d="M60,206 L620,206" stroke="#e8447c" stroke-width="4" opacity="0.8"/>
+  </g>
+</svg>
+</div>
+
+<!-- ================================================================
+     PIER — 1200 x 1600, portrait.
+     A pier at dusk: sun over the water, a speedboat, string lights,
+     beach umbrellas in the sand at the foot.
+     ================================================================ -->
+<div class="scene" id="pier" style="width:1200px;height:1600px">
+<svg width="1200" height="1600" viewBox="0 0 1200 1600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d0740"/>
+      <stop offset="0.34" stop-color="#7b2d8b"/>
+      <stop offset="0.55" stop-color="#e8447c"/>
+      <stop offset="0.72" stop-color="#ff7a3d"/>
+      <stop offset="1" stop-color="#ffb347"/>
+    </linearGradient>
+    <linearGradient id="pSea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff9a3d"/>
+      <stop offset="0.25" stop-color="#c93a6e"/>
+      <stop offset="0.7" stop-color="#4a1458"/>
+      <stop offset="1" stop-color="#22103f"/>
+    </linearGradient>
+    <filter id="psoft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+    <filter id="pglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <g id="ppalm">
+      <path d="M0,240 Q16,120 52,8" stroke="#180630" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <g stroke="#180630" stroke-width="10" fill="none" stroke-linecap="round">
+        <path d="M52,8 Q104,-40 172,-34"/>
+        <path d="M52,8 Q122,10 168,58"/>
+        <path d="M52,8 Q0,-44 -72,-32"/>
+        <path d="M52,8 Q-12,12 -62,62"/>
+        <path d="M52,8 Q62,-52 112,-74"/>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="1200" height="900" fill="url(#pSky)"/>
+  <circle cx="470" cy="872" r="250" fill="#ff9a3d" opacity="0.35" filter="url(#psoft)"/>
+  <circle cx="470" cy="872" r="148" fill="#ffd94d"/>
+  <g fill="#ff8fb5" opacity="0.45" filter="url(#psoft)">
+    <ellipse cx="240" cy="230" rx="200" ry="26"/>
+    <ellipse cx="880" cy="150" rx="240" ry="24"/>
+    <ellipse cx="700" cy="330" rx="300" ry="22"/>
+  </g>
+  <g fill="#2a0a45">
+    <rect x="-10" y="742" width="90" height="140"/>
+    <rect x="96" y="700" width="64" height="182"/>
+    <rect x="1010" y="724" width="80" height="158"/>
+    <rect x="1104" y="686" width="60" height="196"/>
+  </g>
+
+  <!-- sea -->
+  <rect y="882" width="1200" height="470" fill="url(#pSea)"/>
+  <g fill="#ffd94d">
+    <rect x="392" y="910" width="156" height="9" opacity="0.85"/>
+    <rect x="368" y="946" width="204" height="8" opacity="0.7"/>
+    <rect x="404" y="986" width="132" height="8" opacity="0.75"/>
+    <rect x="352" y="1030" width="236" height="9" opacity="0.55"/>
+    <rect x="420" y="1080" width="100" height="8" opacity="0.6"/>
+    <rect x="380" y="1136" width="180" height="9" opacity="0.45"/>
+    <rect x="430" y="1200" width="80" height="8" opacity="0.5"/>
+    <rect x="360" y="1264" width="220" height="9" opacity="0.35"/>
+  </g>
+  <g fill="#17e6c8" opacity="0.35">
+    <rect x="820" y="960" width="120" height="7"/>
+    <rect x="90" y="1050" width="150" height="7"/>
+    <rect x="900" y="1150" width="170" height="7"/>
+    <rect x="140" y="1240" width="110" height="7"/>
+  </g>
+
+  <!-- speedboat -->
+  <g transform="translate(742,1052)">
+    <path d="M-160,66 L190,66 L150,102 L-96,102 Z" fill="#12041f"/>
+    <path d="M-96,66 C-40,30 60,22 128,40 L150,66 Z" fill="#1d0a38"/>
+    <path d="M-20,44 C20,28 70,28 104,42 L112,60 L-34,60 Z" fill="#4a2673"/>
+    <path d="M-190,108 L-330,122 M-180,96 L-300,96" stroke="#fff7ea" stroke-width="6" opacity="0.55" stroke-linecap="round"/>
+    <rect x="150" y="52" width="34" height="9" rx="4" fill="#ff3355" filter="url(#pglow)"/>
+  </g>
+
+  <!-- pier -->
+  <polygon points="0,1600 0,1150 700,940 760,940 260,1600" fill="#241038"/>
+  <g stroke="#12041f" stroke-width="7">
+    <line x1="36" y1="1256" x2="330" y2="1600"/>
+    <line x1="128" y1="1180" x2="480" y2="1600"/>
+    <line x1="240" y1="1104" x2="610" y2="1600"/>
+    <line x1="380" y1="1036" x2="716" y2="1470"/>
+  </g>
+  <g stroke="#3d1160" stroke-width="16">
+    <line x1="30" y1="1160" x2="742" y2="946"/>
+    <line x1="52" y1="1212" x2="748" y2="1002"/>
+  </g>
+  <g fill="#ffd94d" filter="url(#pglow)">
+    <circle cx="90" cy="1142" r="9"/><circle cx="200" cy="1108" r="9"/>
+    <circle cx="310" cy="1074" r="9"/><circle cx="420" cy="1041" r="9"/>
+    <circle cx="530" cy="1008" r="9"/><circle cx="640" cy="975" r="9"/>
+    <circle cx="730" cy="949" r="9"/>
+  </g>
+
+  <!-- sand + umbrellas -->
+  <polygon points="700,1600 1200,1600 1200,1330 830,1420" fill="#8a4a6e"/>
+  <g transform="translate(950,1330)">
+    <line x1="0" y1="0" x2="-14" y2="120" stroke="#180630" stroke-width="8"/>
+    <path d="M-110,6 Q0,-86 110,6 Q55,-16 0,6 Q-55,-16 -110,6 Z" fill="#e8447c"/>
+    <path d="M-110,6 Q0,-86 110,6 Q55,-16 0,6 Q-55,-16 -110,6 Z" fill="none" stroke="#fff7ea" stroke-width="5"/>
+  </g>
+  <g transform="translate(1090,1420) scale(0.72)">
+    <line x1="0" y1="0" x2="-14" y2="120" stroke="#180630" stroke-width="8"/>
+    <path d="M-110,6 Q0,-86 110,6 Q55,-16 0,6 Q-55,-16 -110,6 Z" fill="#17e6c8"/>
+  </g>
+
+  <use href="#ppalm" transform="translate(1058,880) scale(1.25)"/>
+  <use href="#ppalm" transform="translate(64,906) scale(-1.05,1.05)"/>
+</svg>
+</div>
+
+</body>
+</html>

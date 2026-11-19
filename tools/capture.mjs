@@ -1,156 +1,204 @@
-// capture.mjs — screenshot the app's ?shot= scenes into screenshots/.
-// Node standard library only: it starts serve.ts on a scratch port, launches
-// headless Chrome, and drives it over the DevTools protocol using Node's
-// built-in WebSocket. Each shot retries at lower JPEG quality until it fits
-// the competition cap (262144 bytes), and every file's dimensions are read
-// back from its JPEG markers and checked against the gate's size rules
-// (long side <= 1280, short side >= 480) before this tool calls it done.
+// capture.mjs — makes every image this entry ships, in one run:
 //
-// Run: node tools/capture.mjs
+//   1. samples: renders tools/samples.html in headless Chrome and cuts the
+//      two drawn scenes out of it as app/samples/boulevard.jpg (1600x1200)
+//      and app/samples/pier.jpg (1200x1600).
+//   2. screenshots: serves app/ with serve.ts, walks the scenes listed in
+//      shots.json, waits for each scene's window.__shotReady, and saves
+//      screenshots/<name> as a JPEG that fits the gate: at most 262144
+//      bytes (dropping quality until it fits), long side at most 1280,
+//      short side at least 480. For the exports scene it also reads back
+//      window.__exportDims and checks the three true export sizes.
+//
+// Node standard library only: Chrome is driven over the DevTools protocol
+// on Node's built-in WebSocket. Run: node tools/capture.mjs
 
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const shots = JSON.parse(readFileSync(join(repoRoot, 'shots.json'), 'utf8'));
-const SERVE_PORT = 8931;
-const DEBUG_PORT = 8932;
-const MAX_BYTES = 262144;
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const PORT_SERVE = 8971;
+const PORT_DEBUG = 8972;
+const SHOT_BYTE_CAP = 262144;
+const EXPECTED_EXPORTS = [[1080, 1080], [1080, 1350], [1920, 1080]];
 
-const CHROME_CANDIDATES = [
+const CHROME_OPTIONS = [
   process.env.CHROME_BIN,
   '/home/hatch/.cache/puppeteer/chrome/linux-148.0.7778.97/chrome-linux64/chrome',
   '/opt/meta-chromium/chrome',
-  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/chromium-browser',
   '/usr/bin/chromium',
 ].filter(Boolean);
-const chromeBin = CHROME_CANDIDATES.find((p) => existsSync(p));
-if (!chromeBin) throw new Error('no Chrome binary found');
+const chromePath = CHROME_OPTIONS.find((p) => existsSync(p));
+if (!chromePath) throw new Error('no Chrome binary found in the usual places');
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function waitForHttp(url, tries = 60) {
-  for (let i = 0; i < tries; i++) {
+async function waitUntilUp(url, attempts = 80) {
+  for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(url);
       if (res.ok) return res;
-    } catch { /* not up yet */ }
-    await sleep(250);
+    } catch { /* still starting */ }
+    await pause(200);
   }
-  throw new Error(`timed out waiting for ${url}`);
+  throw new Error(`never came up: ${url}`);
 }
 
-// Minimal CDP client over the browser-level WebSocket, one flat session.
-class Cdp {
-  constructor(ws) {
-    this.ws = ws;
-    this.nextId = 1;
-    this.pending = new Map();
-    ws.addEventListener('message', (ev) => {
-      const msg = JSON.parse(ev.data);
-      if (msg.id && this.pending.has(msg.id)) {
-        const { resolve, reject } = this.pending.get(msg.id);
-        this.pending.delete(msg.id);
-        if (msg.error) reject(new Error(`${msg.error.message}`));
-        else resolve(msg.result);
-      }
+// A flat-session DevTools client: one map of pending calls by id.
+class DevTools {
+  constructor(socket) {
+    this.socket = socket;
+    this.seq = 0;
+    this.waiting = new Map();
+    socket.addEventListener('message', (event) => {
+      const msg = JSON.parse(event.data);
+      if (!msg.id || !this.waiting.has(msg.id)) return;
+      const { done, fail } = this.waiting.get(msg.id);
+      this.waiting.delete(msg.id);
+      if (msg.error) fail(new Error(msg.error.message));
+      else done(msg.result);
     });
   }
-  send(method, params = {}, sessionId) {
-    const id = this.nextId++;
-    const payload = { id, method, params };
-    if (sessionId) payload.sessionId = sessionId;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify(payload));
+
+  call(method, params = {}, sessionId) {
+    const id = ++this.seq;
+    const body = { id, method, params };
+    if (sessionId) body.sessionId = sessionId;
+    return new Promise((done, fail) => {
+      this.waiting.set(id, { done, fail });
+      this.socket.send(JSON.stringify(body));
     });
   }
 }
 
-function jpegSize(buf) {
-  if (buf[0] !== 0xff || buf[1] !== 0xd8) throw new Error('not a JPEG');
-  let off = 2;
-  while (off < buf.length - 9) {
-    if (buf[off] !== 0xff) { off++; continue; }
-    const marker = buf[off + 1];
+function jpegDimensions(buf) {
+  if (buf[0] !== 0xff || buf[1] !== 0xd8) throw new Error('not a JPEG stream');
+  let at = 2;
+  while (at + 9 < buf.length) {
+    if (buf[at] !== 0xff) { at += 1; continue; }
+    const marker = buf[at + 1];
     if (marker >= 0xc0 && marker <= 0xc3) {
-      return { h: buf.readUInt16BE(off + 5), w: buf.readUInt16BE(off + 7) };
+      return { w: buf.readUInt16BE(at + 7), h: buf.readUInt16BE(at + 5) };
     }
     if (marker === 0xd9 || marker === 0xda) break;
-    off += 2 + buf.readUInt16BE(off + 2);
+    at += 2 + buf.readUInt16BE(at + 2);
   }
-  throw new Error('no SOF marker in JPEG');
+  throw new Error('JPEG has no frame header');
+}
+
+async function openPage(devtools) {
+  const { targetId } = await devtools.call('Target.createTarget', { url: 'about:blank' });
+  const { sessionId } = await devtools.call('Target.attachToTarget', { targetId, flatten: true });
+  await devtools.call('Page.enable', {}, sessionId);
+  await devtools.call('Runtime.enable', {}, sessionId);
+  return sessionId;
+}
+
+async function evaluate(devtools, sessionId, expression) {
+  const out = await devtools.call('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }, sessionId);
+  if (out.exceptionDetails) throw new Error(`page threw: ${out.exceptionDetails.text}`);
+  return out.result?.value;
+}
+
+async function shoot(devtools, sessionId, params) {
+  const res = await devtools.call('Page.captureScreenshot', { format: 'jpeg', ...params }, sessionId);
+  return Buffer.from(res.data, 'base64');
+}
+
+async function makeSamples(devtools, sessionId) {
+  await devtools.call('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false }, sessionId);
+  const url = pathToFileURL(join(root, 'tools', 'samples.html')).href;
+  await devtools.call('Page.navigate', { url }, sessionId);
+  await evaluate(devtools, sessionId, 'document.fonts.ready.then(() => true)');
+  await pause(400);
+  mkdirSync(join(root, 'app', 'samples'), { recursive: true });
+  const report = [];
+  for (const [id, file] of [['boulevard', 'boulevard.jpg'], ['pier', 'pier.jpg']]) {
+    const box = await evaluate(devtools, sessionId,
+      `(() => { const r = document.getElementById('${id}').getBoundingClientRect(); return { x: r.x + scrollX, y: r.y + scrollY, w: r.width, h: r.height }; })()`);
+    const buf = await shoot(devtools, sessionId, {
+      quality: 92,
+      captureBeyondViewport: true,
+      clip: { x: box.x, y: box.y, width: box.w, height: box.h, scale: 1 },
+    });
+    const dims = jpegDimensions(buf);
+    if (dims.w !== box.w || dims.h !== box.h) {
+      throw new Error(`${file}: cut out ${dims.w}x${dims.h}, scene is ${box.w}x${box.h}`);
+    }
+    writeFileSync(join(root, 'app', 'samples', file), buf);
+    report.push(`sample ${file}: ${dims.w}x${dims.h}, ${buf.length} bytes`);
+  }
+  return report;
+}
+
+async function makeScreenshots(devtools, sessionId) {
+  const shots = JSON.parse(readFileSync(join(root, 'shots.json'), 'utf8'));
+  mkdirSync(join(root, 'screenshots'), { recursive: true });
+  const report = [];
+  for (const shot of shots) {
+    await devtools.call('Emulation.setDeviceMetricsOverride', { width: shot.w, height: shot.h, deviceScaleFactor: 1, mobile: false }, sessionId);
+    await devtools.call('Page.navigate', { url: `http://127.0.0.1:${PORT_SERVE}/index.html${shot.query}` }, sessionId);
+    let ready = false;
+    for (let i = 0; i < 100 && !ready; i++) {
+      ready = (await evaluate(devtools, sessionId, 'window.__shotReady === true').catch(() => false)) === true;
+      if (!ready) await pause(200);
+    }
+    if (!ready) throw new Error(`scene never settled: ${shot.name}`);
+    await pause(120);
+
+    if (shot.query.includes('shot=exports')) {
+      const dims = await evaluate(devtools, sessionId, 'window.__exportDims');
+      if (JSON.stringify(dims) !== JSON.stringify(EXPECTED_EXPORTS)) {
+        throw new Error(`export size proof failed: got ${JSON.stringify(dims)}`);
+      }
+      report.push(`export proof: ${JSON.stringify(dims)}`);
+    }
+
+    let buf = null;
+    for (let quality = 88; quality >= 36; quality -= 6) {
+      buf = await shoot(devtools, sessionId, { quality, captureBeyondViewport: false });
+      if (buf.length <= SHOT_BYTE_CAP) break;
+    }
+    if (!buf || buf.length > SHOT_BYTE_CAP) throw new Error(`${shot.name}: ${buf?.length} bytes even at floor quality`);
+    const dims = jpegDimensions(buf);
+    const long = Math.max(dims.w, dims.h);
+    const short = Math.min(dims.w, dims.h);
+    if (long > 1280 || short < 480) throw new Error(`${shot.name}: ${dims.w}x${dims.h} breaks the gate's size rules`);
+    writeFileSync(join(root, 'screenshots', shot.name), buf);
+    report.push(`shot ${shot.name}: ${dims.w}x${dims.h}, ${buf.length} bytes`);
+  }
+  return report;
 }
 
 async function main() {
-  const server = spawn('node', ['serve.ts', '--port', String(SERVE_PORT)], {
-    cwd: repoRoot, stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  const chrome = spawn(chromeBin, [
+  const server = spawn('node', ['serve.ts', '--port', String(PORT_SERVE)], { cwd: root, stdio: 'ignore' });
+  const chrome = spawn(chromePath, [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
-    `--remote-debugging-port=${DEBUG_PORT}`, '--remote-debugging-address=127.0.0.1',
-    `--user-data-dir=/tmp/vc-cover-chrome-${process.pid}`,
-    '--window-size=1280,900', 'about:blank',
-  ], { stdio: ['ignore', 'pipe', 'pipe'] });
-
+    '--force-device-scale-factor=1',
+    `--remote-debugging-port=${PORT_DEBUG}`, '--remote-debugging-address=127.0.0.1',
+    `--user-data-dir=/tmp/neon-frame-chrome-${process.pid}`,
+    'about:blank',
+  ], { stdio: 'ignore' });
   try {
-    await waitForHttp(`http://127.0.0.1:${SERVE_PORT}/`);
-    const version = await (await waitForHttp(`http://127.0.0.1:${DEBUG_PORT}/json/version`)).json();
-    const ws = new WebSocket(version.webSocketDebuggerUrl);
-    await new Promise((resolve, reject) => {
-      ws.addEventListener('open', resolve, { once: true });
-      ws.addEventListener('error', reject, { once: true });
+    await waitUntilUp(`http://127.0.0.1:${PORT_SERVE}/index.html`);
+    const version = await (await waitUntilUp(`http://127.0.0.1:${PORT_DEBUG}/json/version`)).json();
+    const socket = new WebSocket(version.webSocketDebuggerUrl);
+    await new Promise((done, fail) => {
+      socket.addEventListener('open', done, { once: true });
+      socket.addEventListener('error', fail, { once: true });
     });
-    const cdp = new Cdp(ws);
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-    await cdp.send('Page.enable', {}, sessionId);
-    await cdp.send('Runtime.enable', {}, sessionId);
-
-    mkdirSync(join(repoRoot, 'screenshots'), { recursive: true });
-    const results = [];
-    for (const shot of shots) {
-      await cdp.send('Emulation.setDeviceMetricsOverride', {
-        width: shot.w, height: shot.h, deviceScaleFactor: 1, mobile: false,
-      }, sessionId);
-      await cdp.send('Page.navigate', {
-        url: `http://127.0.0.1:${SERVE_PORT}/index.html${shot.query}`,
-      }, sessionId);
-      let ready = false;
-      for (let i = 0; i < 80 && !ready; i++) {
-        const r = await cdp.send('Runtime.evaluate', {
-          expression: 'window.__shotReady === true', returnByValue: true,
-        }, sessionId);
-        ready = r.result?.value === true;
-        if (!ready) await sleep(250);
-      }
-      if (!ready) throw new Error(`scene never became ready: ${shot.name} (${shot.query})`);
-      await sleep(150);
-
-      let buf = null;
-      for (let quality = 88; quality >= 40; quality -= 8) {
-        const shotRes = await cdp.send('Page.captureScreenshot', {
-          format: 'jpeg', quality, captureBeyondViewport: false,
-        }, sessionId);
-        buf = Buffer.from(shotRes.data, 'base64');
-        if (buf.length <= MAX_BYTES) break;
-      }
-      if (!buf || buf.length > MAX_BYTES) {
-        throw new Error(`${shot.name}: still ${buf?.length} bytes after quality retries`);
-      }
-      const { w, h } = jpegSize(buf);
-      const longSide = Math.max(w, h), shortSide = Math.min(w, h);
-      if (longSide > 1280 || shortSide < 480) {
-        throw new Error(`${shot.name}: ${w}x${h} breaks the gate size rules`);
-      }
-      writeFileSync(join(repoRoot, 'screenshots', shot.name), buf);
-      results.push(`${shot.name} ${w}x${h} ${buf.length} bytes`);
-      console.log(`captured ${shot.name}: ${w}x${h}, ${buf.length} bytes (cap ${MAX_BYTES})`);
-    }
-    console.log(`all ${results.length} screenshots within caps`);
-    ws.close();
+    const devtools = new DevTools(socket);
+    const sessionId = await openPage(devtools);
+    const report = [];
+    report.push(...await makeSamples(devtools, sessionId));
+    report.push(...await makeScreenshots(devtools, sessionId));
+    socket.close();
+    for (const line of report) console.log(line);
+    console.log('capture complete: samples + screenshots all inside the caps');
   } finally {
     chrome.kill('SIGKILL');
     server.kill('SIGKILL');

@@ -1,4 +1,9 @@
+# Regenerated every time `node main.ts` hands the entry in
 out/
-node_modules/
+
+# Local noise
 *.log
 .DS_Store
+node_modules/
+.idea/
+.vscode/

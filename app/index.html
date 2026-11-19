@@ -3,86 +3,114 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vice City Cover Maker — GTA-style cover art from any photo</title>
+<title>Neon Frame — GTA-style cover art from any photo</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-badge">VC</span>
-    <div>
-      <h1>Vice City Cover Maker</h1>
-      <p>Any photo in, multi-panel cover art out. Offline — your photos never leave this machine.</p>
-    </div>
+<body data-view="editor">
+<header class="masthead">
+  <div class="brandmark" aria-hidden="true"><span>NF</span></div>
+  <div class="wordmark">
+    <h1>Neon Frame</h1>
+    <p>Your photos in, Vice City cover art out. Fully offline — nothing is uploaded, ever.</p>
   </div>
-  <div class="top-actions">
-    <label class="btn primary" for="photoInput">＋ Add photos</label>
-    <input id="photoInput" type="file" accept="image/*" multiple hidden>
-    <button id="shuffleSeedBtn" class="btn" type="button">🎲 New grain seed</button>
-  </div>
+  <nav class="viewtabs" aria-label="Views">
+    <button type="button" class="tab active" data-view-tab="editor">Editor</button>
+    <button type="button" class="tab" data-view-tab="poster">Poster</button>
+    <button type="button" class="tab" data-view-tab="sizes">Sizes</button>
+  </nav>
+  <label class="addbtn" for="fileInput">Add photos</label>
+  <input id="fileInput" type="file" accept="image/*" multiple hidden>
 </header>
 
-<main class="workspace">
-  <section class="stage" id="dropZone">
-    <div class="canvas-wrap">
-      <canvas id="previewCanvas" width="880" height="880"></canvas>
-      <canvas id="originalCanvas" width="880" height="880"></canvas>
-      <div class="drop-hint" id="dropHint">Drop photos anywhere to add them</div>
+<main>
+  <!-- ============================ EDITOR ============================ -->
+  <section id="view-editor" class="view">
+    <div class="stagecol" id="dropZone">
+      <div class="stageframe">
+        <canvas id="stageCanvas" width="1080" height="1350"></canvas>
+      </div>
+      <p class="stageline">Live preview at full export resolution. Drop photo files anywhere on this column to add them.</p>
     </div>
-    <div class="ba-row">
-      <label for="baSlider">Before / after</label>
-      <input id="baSlider" type="range" min="0" max="100" value="100">
-      <span id="baLabel">Cover</span>
-    </div>
-    <div class="export-row">
-      <button class="btn primary export-btn" data-size="square" type="button">Export 1080 × 1080</button>
-      <button class="btn primary export-btn" data-size="portrait" type="button">Export 1080 × 1350</button>
-      <button class="btn primary export-btn" data-size="wide" type="button">Export 1920 × 1080</button>
-    </div>
-    <p class="export-note" id="exportNote">Exports render offscreen at full resolution and are checked before download.</p>
-  </section>
 
-  <aside class="panel">
-    <h2>Caption</h2>
-    <label class="field">Cover title
-      <input id="captionInput" type="text" maxlength="26" value="Neon Shore">
-    </label>
-    <label class="field">Script subtitle
-      <input id="subtitleInput" type="text" maxlength="34" value="vice city nights">
-    </label>
-    <label class="field">Heat <span id="heatLabel">5 stars</span>
-      <input id="heatInput" type="range" min="0" max="5" step="1" value="5">
-    </label>
+    <aside class="controls">
+      <h2>Photos</h2>
+      <div class="row">
+        <button type="button" class="mini" id="sampleBoulevard">Sample · Boulevard</button>
+        <button type="button" class="mini" id="samplePier">Sample · Pier</button>
+      </div>
+      <div id="photoStrip" class="photostrip"></div>
 
-    <h2>Layout</h2>
-    <div class="chip-grid" id="layoutChips"></div>
+      <h2>Lettering</h2>
+      <label class="lab">Cover title
+        <input id="titleInput" type="text" maxlength="30" value="Neon Harbor">
+      </label>
+      <label class="lab">Kicker line
+        <input id="kickerInput" type="text" maxlength="36" value="Vice City Nights">
+      </label>
 
-    <h2>Colour grade</h2>
-    <div class="chip-grid" id="gradeChips"></div>
+      <h2>Layout</h2>
+      <div id="layoutButtons" class="btnset"></div>
 
-    <h2>Panels</h2>
-    <p class="hint">Pick a panel, give it a photo, then frame it with zoom and pan.</p>
-    <div id="panelList" class="panel-list"></div>
-    <div class="tune-box">
-      <label class="field">Panel photo
+      <h2>Poster size</h2>
+      <div id="sizeButtons" class="btnset"></div>
+
+      <h2>Seed</h2>
+      <div class="row">
+        <input id="seedInput" type="text" maxlength="10" value="19" aria-label="Poster seed">
+        <button type="button" class="mini" id="diceButton">New seed</button>
+      </div>
+      <p class="note">Same seed, same poster: the panel dealing, grain and skyline are all grown from it.</p>
+
+      <h2>Panels</h2>
+      <div id="panelList" class="btnset"></div>
+      <label class="lab">Panel photo
         <select id="panelPhotoSelect"></select>
       </label>
-      <label class="field">Zoom <input id="zoomInput" type="range" min="1" max="2.6" step="0.02" value="1"></label>
-      <label class="field">Pan X <input id="panXInput" type="range" min="-1" max="1" step="0.02" value="0"></label>
-      <label class="field">Pan Y <input id="panYInput" type="range" min="-1" max="1" step="0.02" value="0"></label>
+      <label class="lab">Zoom <input id="zoomRange" type="range" min="1" max="2.8" step="0.01"></label>
+      <label class="lab">Focus X <input id="focusXRange" type="range" min="0" max="1" step="0.01"></label>
+      <label class="lab">Focus Y <input id="focusYRange" type="range" min="0" max="1" step="0.01"></label>
+
+      <h2>Source outline</h2>
+      <p class="note">Written from the same render plan the painter just used — they cannot disagree.</p>
+      <pre id="outlinePre" class="outline"></pre>
+    </aside>
+  </section>
+
+  <!-- ============================ POSTER ============================ -->
+  <section id="view-poster" class="view" hidden>
+    <div class="posterframe">
+      <canvas id="posterCanvas" width="1080" height="1350"></canvas>
     </div>
+    <div class="exportbar">
+      <button type="button" class="exportbtn" data-export="square">Export PNG · 1080 × 1080</button>
+      <button type="button" class="exportbtn" data-export="portrait">Export PNG · 1080 × 1350</button>
+      <button type="button" class="exportbtn" data-export="landscape">Export PNG · 1920 × 1080</button>
+    </div>
+    <p id="exportLog" class="exportlog">Every export is rendered offscreen at full size and its pixels are counted before the download starts.</p>
+  </section>
 
-    <h2>Source outline</h2>
-    <p class="hint">Generated live from the current render state.</p>
-    <pre id="outlineBox" class="outline"></pre>
-
-    <h2>Exported covers</h2>
-    <div id="galleryBox" class="gallery"></div>
-  </aside>
+  <!-- ============================ SIZES ============================= -->
+  <section id="view-sizes" class="view" hidden>
+    <div class="sizesheet">
+      <figure>
+        <canvas id="sheetSquare" width="540" height="540"></canvas>
+        <figcaption>Square · exports at 1080 × 1080</figcaption>
+      </figure>
+      <figure>
+        <canvas id="sheetPortrait" width="540" height="675"></canvas>
+        <figcaption>Portrait · exports at 1080 × 1350</figcaption>
+      </figure>
+      <figure>
+        <canvas id="sheetLandscape" width="960" height="540"></canvas>
+        <figcaption>Landscape · exports at 1920 × 1080</figcaption>
+      </figure>
+    </div>
+    <p id="sizesNote" class="exportlog">One plan, three post sizes — the sheet above is drawn by the same painter as the exports.</p>
+  </section>
 </main>
 
-<footer class="foot">
-  <p>An original fan-made tool. No Rockstar Games logos, artwork or fonts — every letter and panel here is drawn by this app.</p>
+<footer class="colophon">
+  <p>An original tool by its maker. No Rockstar Games logo, artwork, character or font is used anywhere in it — every panel, letter and silhouette is drawn by this app's own code.</p>
 </footer>
 
 <script type="module" src="src/main.js"></script>
