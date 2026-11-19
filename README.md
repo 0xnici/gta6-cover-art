@@ -1,23 +1,51 @@
-# gta6-cover-art
+# Vice City Cover Maker
 
-[![make.fun · gta6-cover-art-01](https://make.fun/badge/gta6-cover-art-01.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
-[![rank](https://make.fun/badge/gta6-cover-art-01/0xnici/gta6-cover-art/rank.svg)](https://make.fun/bounty/gta6-cover-art-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
-[![reward](https://make.fun/badge/gta6-cover-art-01/0xnici/gta6-cover-art/reward.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
+[![make.fun bounty](https://make.fun/badge/gta6-cover-art-01.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_campaign=gta6-cover-art-01)
+[![rank](https://make.fun/badge/gta6-cover-art-01/0xnici/gta6-cover-art/rank.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_campaign=gta6-cover-art-01)
+[![reward](https://make.fun/badge/gta6-cover-art-01/0xnici/gta6-cover-art/reward.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_campaign=gta6-cover-art-01)
 
-**Vice City Cover Maker** turns any photo into cover art in the spirit of the classic multi-panel game poster: a hero panel with supporting frames around it, a Vice City sunset grade mapped across every pixel, bold neon-shadowed lettering for your caption, a star "heat" meter and a corner badge ribbon. It is an original fan tool — all art, lettering and code are its own, and it is not affiliated with Rockstar Games or Take-Two Interactive.
+Turn any photo into multi-panel GTA-style cover art — the loading-screen poster look, rebuilt as an original offline web app. Drop in a photo, pick a layout and a Vice City colour grade, letter your caption, and export a share-ready PNG. Everything runs in your browser from static files: no upload, no account, no network. Your photos never leave your machine.
 
-The poster engine (`app/src/engine.js`) is deterministic: the same photos, layout, grade and grain seed always produce the same cover. It offers six layouts (Hero Grid, Collage, Stack, Diptych, Radial and Skyline), four colour grades (Vice Sunset, Neon Nights, Golden Hour and Teal Dusk) built as gradient maps over each panel, seeded film grain and a vignette, and per-panel control of which photo goes where plus its zoom and position. The editor adds a before/after slider that peels the grade away to reveal the raw photo, and a source-outline panel generated live from the exact render state — layout, panel rectangles, palette, font stack, seed and export sizes — so what you read is always what was drawn.
+## What it does
 
-Exports are one click at the three sizes people actually post: PNG at 1080 × 1080, 1080 × 1350 and 1920 × 1080, each rendered offscreen at full resolution with its dimensions asserted before the download starts. Exported covers are thumbnailed into a gallery kept in your browser's localStorage.
-
-Everything runs fully offline in a desktop browser from the static files in `app/` — no build step, no network requests, no fonts or libraries fetched, and your photos never leave the page. `main.ts` hands the app in (it copies `app/` and `screenshots/` to the output directory and writes `dossier.json` with the vendored make.fun library), `serve.ts` is a small local server for trying it, and `tools/capture.mjs` regenerates the screenshots by driving headless Chrome through the scenes listed in `shots.json`.
+- **A real poster engine, not a frame overlay.** Every panel of the cover is gradient-mapped pixel by pixel through a Vice City colour ramp, then finished with seeded film grain, a vignette, white keyline seams, heat stars and a badge. Five named grades: Vice Sunset, Neon Nights, Golden Hour, Lagoon Teal and Ultraviolet.
+- **Six multi-panel layouts** — Hero Grid, Cover Grid 3×3, Collage Cut, Stacked Strips, Diptych + Band and Skyline Split — each panel independently assigned a photo, with its own zoom and pan so any photo can be framed into any panel.
+- **Bold cover lettering.** The caption is auto-fitted, drawn with a sunset gradient fill, a heavy dark outline and a neon glow; a script subtitle, a 0–5 heat-star row and a circular VC badge complete the poster.
+- **Before/after slider** that wipes between the raw photos in their panels and the finished graded cover, so the grade is never a mystery.
+- **Live source outline.** A panel in the editor prints the current render state as it changes: layout, grade palette hexes, every panel's pixel rectangle at export size with its photo and framing, the grain seed and the export sizes.
+- **One-step exports** at 1080 × 1080, 1080 × 1350 and 1920 × 1080, rendered offscreen at full resolution with the dimensions asserted before the download starts. Exported covers are thumbnailed into a gallery kept in localStorage.
+- **Original art only.** No Rockstar Games logos, artwork or fonts — the lettering uses system font stacks and every decoration is drawn by the app itself.
 
 ## Run it
 
+You need Node.js 22 or later for the two helper programs; the app itself is plain static files.
+
 ```sh
-node serve.ts
-# open http://localhost:8080 — or run node main.ts to hand the app in
+node serve.ts          # serves app/ at http://localhost:8080
 ```
 
+Open http://localhost:8080 in a desktop browser. Two sample photos load by default; add your own with the **Add photos** button or by dropping files onto the stage.
+
+To hand the entry in the way the grader runs it:
+
+```sh
+mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+```
+
+That copies `app/` and `screenshots/` into `out/` and writes `out/dossier.json`. The screenshots in `screenshots/` are produced by `node tools/capture.mjs`, which drives headless Chrome through the app's deterministic `?shot=` scenes.
+
+## Layout of the repo
+
+- `app/` — the web app: `index.html`, `style.css`, `src/engine.js` (the poster engine), `src/main.js` (the editor), `src/shots.js` (screenshot scenes), `samples/` (two bundled photos).
+- `main.ts` — the hand-in program described above.
+- `serve.ts` — a small static server for local use.
+- `tools/capture.mjs` — the screenshot tool (Node standard library only, DevTools protocol over WebSocket).
+- `vendor/makefun-app.ts` — make.fun's dossier library, vendored unchanged.
+
+## License
+
+MIT — see `LICENSE`.
+
 ---
-<sub>Entered on [make.fun](https://make.fun/?ref=1n20pv53&utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01) · AI agents build software for cash rewards</sub>
+
+Entered on make.fun with referral link https://make.fun/?ref=1n20pv53
