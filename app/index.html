@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice City Cover Maker — GTA-style cover art from any photo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="brand">
+  <div>
+    <h1>Vice City <span>Cover Maker</span></h1>
+    <p class="tagline">Turn any photo into multi-panel poster cover art — sunset grade, neon type, three export sizes. Fully offline: your photos never leave this page.</p>
+  </div>
+  <div class="brand-badge">EST. 2026 ★ LEONIDA</div>
+</header>
+
+<main class="workspace">
+  <aside class="controls" aria-label="Cover controls">
+    <section class="card">
+      <h2>1 · Photos</h2>
+      <label class="file-label">Add photos
+        <input id="photo-input" type="file" accept="image/*" multiple>
+      </label>
+      <div class="sample-row">
+        <button type="button" id="sample-pier" class="ghost">Load sample: Pier</button>
+        <button type="button" id="sample-boulevard" class="ghost">Load sample: Boulevard</button>
+      </div>
+      <ul id="photo-list" class="photo-list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>2 · Layout &amp; grade</h2>
+      <label>Layout
+        <select id="layout-select"></select>
+      </label>
+      <label>Grade
+        <select id="grade-select"></select>
+      </label>
+      <label>Grain seed
+        <input id="seed-input" type="number" min="1" max="99999" step="1" value="7">
+      </label>
+      <label>Heat meter <output id="heat-out">4 ★</output>
+        <input id="heat-input" type="range" min="0" max="5" step="1" value="4">
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>3 · Words</h2>
+      <label>Caption
+        <input id="caption-input" type="text" maxlength="42" value="Sunset Heist">
+      </label>
+      <label>Subtitle
+        <input id="subtitle-input" type="text" maxlength="60" value="Vice Coast · Leonida">
+      </label>
+    </section>
+
+    <section class="card" id="panel-card">
+      <h2>4 · Panel editor</h2>
+      <label>Panel
+        <select id="panel-select"></select>
+      </label>
+      <label>Photo in this panel
+        <select id="panel-photo-select"></select>
+      </label>
+      <label>Zoom <output id="zoom-out">1.00×</output>
+        <input id="zoom-input" type="range" min="0.6" max="3" step="0.01" value="1">
+      </label>
+      <label>Shift X <output id="ox-out">0%</output>
+        <input id="ox-input" type="range" min="-0.5" max="0.5" step="0.01" value="0">
+      </label>
+      <label>Shift Y <output id="oy-out">0%</output>
+        <input id="oy-input" type="range" min="-0.5" max="0.5" step="0.01" value="0">
+      </label>
+      <button type="button" id="panel-reset" class="ghost">Reset this panel</button>
+    </section>
+
+    <section class="card">
+      <h2>5 · Before / after</h2>
+      <label>Graded ⇄ raw <output id="compare-out">100%</output>
+        <input id="compare-input" type="range" min="0" max="100" step="1" value="100">
+      </label>
+      <p class="hint">Drag left to peel the grade away and see the untouched photo underneath.</p>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <div class="canvas-wrap">
+      <canvas id="preview" width="720" height="900" aria-label="Cover preview"></canvas>
+    </div>
+
+    <div class="export-bar" id="export-bar">
+      <span class="export-title">Export PNG</span>
+      <button type="button" data-export="square">1080 × 1080</button>
+      <button type="button" data-export="portrait">1080 × 1350</button>
+      <button type="button" data-export="wide">1920 × 1080</button>
+      <span id="export-status" class="export-status" role="status"></span>
+    </div>
+
+    <details class="outline-card" id="outline-details">
+      <summary>Source outline — generated from the live render state</summary>
+      <pre id="outline-pre" aria-label="Render outline as JSON"></pre>
+    </details>
+
+    <section class="gallery-card">
+      <h2>Your exported covers</h2>
+      <p class="hint">Saved in this browser only (localStorage). Click a thumbnail to view it full-size.</p>
+      <div id="gallery" class="gallery"></div>
+    </section>
+  </section>
+</main>
+
+<footer>
+  <p>An original fan tool. Not affiliated with Rockstar Games or Take-Two Interactive. All art, lettering and code are this app's own.</p>
+</footer>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
